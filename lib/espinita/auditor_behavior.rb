@@ -56,38 +56,33 @@ module Espinita
 
     end
 
-    # audited attributes detected against permited columns
-    def audited_attributes
-      self.changes.keys & self.class.permited_columns
+    def changed_audited_columns
+      changes.keys & self.class.permited_columns
     end
 
-    def audited_hash
-      Hash[ audited_attributes.map{|o| [o.to_sym, self.send(o.to_sym)] } ]
+    def changed_audited_changes
+      changes.select { |key| self.class.permited_columns.include? key }
+    end
+
+    def changed_audited_attributes
+      self.attributes.delete_if { |key, _| !self.class.permited_columns.include? key }
     end
 
 
     def audit_create
-      #puts self.class.audit_callbacks
-      write_audit(:action => 'create', 
-                  :audited_changes => audited_hash,
-                  :comment => audit_comment)
+      write_audit(:action => 'create', :audited_changes => changed_audited_attributes, :comment => audit_comment)
     end
 
     def audit_update
-      #puts self.class.audit_callbacks
-      write_audit(:action => 'update', 
-                  :audited_changes => audited_hash,
-                  :comment => audit_comment)
+      write_audit(:action => 'update', :audited_changes => changed_audited_changes, :comment => audit_comment) unless changed_audited_changes.blank?
     end
 
     def audit_destroy
-      write_audit(:action => 'destroy', 
-                  :audited_changes => audited_hash,
-                  :comment => audit_comment)
+      write_audit(:action => 'destroy', :audited_changes => changed_audited_attributes, :comment => audit_comment)
     end
 
     def write_audit(options)
-      self.audits.create(options) unless audited_hash.blank?
+      self.audits.create(options)
     end
 
   end
